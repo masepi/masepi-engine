@@ -1,0 +1,48 @@
+services:
+  publisher:
+    build:
+      context: .
+      args:
+        VERSION: ${ENGINE_VERSION:-dev}
+    image: masepi-publisher:${ENGINE_VERSION:-dev}
+    restart: unless-stopped
+    environment:
+      BASE_URL: ${BASE_URL}
+      CONTENT_BRANCH: ${CONTENT_BRANCH}
+      CONTENT_REPO: ${CONTENT_REPO}
+      POLL_INTERVAL: ${POLL_INTERVAL}
+      PUBLISHER_ADDR: 0.0.0.0:8080
+      SITE_LANGUAGE: ${SITE_LANGUAGE}
+      SITE_TITLE: ${SITE_TITLE}
+      WEBHOOK_REPOSITORY: ${WEBHOOK_REPOSITORY}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    volumes:
+      - ./var:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    depends_on:
+      publisher:
+        condition: service_healthy
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      TLS_CERT_FILE: ${TLS_CERT_FILE}
+      TLS_KEY_FILE: ${TLS_KEY_FILE}
+    ports:
+      - "443:443"
+    volumes:
+      - ./server/nginx/templates:/etc/nginx/templates:ro
+      - ./var/site:/srv/site:ro
+      - ${TLS_CERT_DIR}:/etc/nginx/tls:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "-O", "/dev/null", "https://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6

@@ -1,0 +1,12 @@
+{{define "content"}}
+<article class="article">
+  <header class="article-header">
+    <h1>{{.Post.Title}}</h1>
+    {{if not .Post.Date.IsZero}}<time datetime="{{.Post.Date.Format "2006-01-02"}}">{{.Post.Date.Format "2 January 2006"}}</time>{{end}}
+  </header>
+
+  <div class="prose">
+    {{.Post.Body}}
+  </div>
+</article>
+{{end}}

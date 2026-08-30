@@ -1,0 +1,42 @@
+{{define "base"}}<!doctype html>
+<html lang="{{.Site.Language}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.PageTitle}}</title>
+  {{if .Description}}<meta name="description" content="{{.Description}}">{{end}}
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#202124" media="(prefers-color-scheme: dark)">
+  {{if .Site.BaseURL}}<link rel="canonical" href="{{.Canonical}}">
+  <meta property="og:url" content="{{.Canonical}}">{{end}}
+  <meta property="og:type" content="{{if .Post}}article{{else}}website{{end}}">
+  <meta property="og:title" content="{{.PageTitle}}">
+  {{if .Description}}<meta property="og:description" content="{{.Description}}">{{end}}
+  <meta property="og:site_name" content="{{.Site.Title}}">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/assets/katex/katex.min.css">
+  <script src="/assets/katex/katex.min.js" defer></script>
+  <script src="/assets/katex/auto-render.min.js" defer></script>
+  <script src="/assets/site.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav aria-label="Navigation">
+        <ul>
+          {{range .Sections}}<li><a href="{{.URL}}"{{if and $.Section (eq $.Section.Slug .Slug)}} aria-current="page"{{end}}>{{.Name}}</a></li>{{end}}
+        </ul>
+      </nav>
+    </aside>
+    <main id="content">
+      {{template "content" .}}
+    </main>
+    <button class="theme-toggle" type="button" aria-label="Theme">
+      <span class="theme-light" aria-hidden="true">☾</span>
+      <span class="theme-dark" aria-hidden="true">☀</span>
+    </button>
+  </div>
+</body>
+</html>{{end}}

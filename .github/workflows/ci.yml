@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: sh -n install.sh start.sh stop.sh restart.sh update.sh reload-tls.sh scripts/common.sh scripts/deploy.sh
+      - run: go test ./cmd/masepi ./internal/site
+      - run: go vet ./cmd/masepi ./internal/site
+      - run: docker compose --env-file .env.example config --quiet
+      - run: docker build --build-arg VERSION=ci -t masepi-publisher:ci .

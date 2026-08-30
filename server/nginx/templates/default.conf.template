@@ -1,0 +1,41 @@
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${SITE_DOMAIN};
+
+    ssl_certificate     /etc/nginx/tls/${TLS_CERT_FILE};
+    ssl_certificate_key /etc/nginx/tls/${TLS_KEY_FILE};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    server_tokens off;
+    error_page 404 /404.html;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location = /hooks/content {
+        client_max_body_size 1m;
+        proxy_pass http://publisher:8080/hooks/content;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location = /healthz {
+        proxy_pass http://publisher:8080/healthz;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+    location = /404.html {
+        root /srv/site/current;
+        internal;
+    }
+
+    location / {
+        root /srv/site/current;
+        index index.html;
+        try_files $uri $uri/ =404;
+    }
+}

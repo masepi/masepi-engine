@@ -1,0 +1,6 @@
+/dist/
+/masepi
+/.env
+/var/
+.DS_Store
+*.log

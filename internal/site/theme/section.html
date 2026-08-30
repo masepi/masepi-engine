@@ -1,0 +1,8 @@
+{{define "content"}}
+<section class="section-page">
+  <h1>{{.Section.Name}}</h1>
+  <ul class="article-list">
+    {{range .Posts}}<li><a href="{{.URL}}">{{.Title}}</a>{{if not .Date.IsZero}} <time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 January 2006"}}</time>{{end}}</li>{{end}}
+  </ul>
+</section>
+{{end}}
