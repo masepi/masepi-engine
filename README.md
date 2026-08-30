@@ -1,6 +1,6 @@
 # masepi-engine
 
-Независимый статический движок и сервер публикации. Этот репозиторий содержит только Go-код, тему, Docker Compose и nginx. Название, язык, домен, источник контента, TLS и эксплуатационные параметры конкретного сайта задаются через `.env`; Markdown и изображения находятся в отдельном content-репозитории.~~
+Независимый статический движок и сервер публикации. Этот репозиторий содержит только Go-код, тему, Docker Compose и nginx. Название, язык, домен, источник контента, TLS и эксплуатационные параметры конкретного сайта задаются через `.env`; Markdown и изображения находятся в отдельном content-репозитории.
 
 ## Как работает публикация
 
@@ -38,12 +38,75 @@ SSH URL контента автоматически строится из `WEBHO
 проверка host key остаётся строгой. Remote самого движка также должен быть SSH URL
 вида `git@github.com:owner/repository.git`.
 
-Если `WEBHOOK_SECRET` пуст, установщик сгенерирует его, добавит в `.env`, выставит файлу права `0600` и напечатает параметры webhook. В GitHub нужно открыть `Settings → Webhooks → Add webhook` в content-репозитории и указать:
+Если `WEBHOOK_SECRET` пуст, установщик сгенерирует его, добавит в `.env`,
+выставит файлу права `0600` и напечатает параметры webhook. Webhook создаётся
+именно в **content-репозитории**, а не в репозитории движка.
 
-- Payload URL: напечатанный установщиком `/hooks/content`;
-- Content type: `application/json`;
-- Secret: напечатанный установщиком секрет;
-- Event: только `push`.
+### Настройка GitHub webhook
+
+Перед настройкой убедитесь, что сайт доступен снаружи по HTTPS, сертификат
+действителен, а сервисы запущены:
+
+```sh
+cd /path/to/masepi-engine
+set -a
+. ./.env
+set +a
+curl -fsS "https://${SITE_DOMAIN}/healthz"
+```
+
+Команда должна вывести `ok`. Значения для формы GitHub можно вывести так:
+
+```sh
+printf 'Repository: %s\nBranch: %s\nPayload URL: https://%s/hooks/content\nSecret: %s\n' \
+  "$WEBHOOK_REPOSITORY" "$CONTENT_BRANCH" "$SITE_DOMAIN" "$WEBHOOK_SECRET"
+```
+
+Не публикуйте `WEBHOOK_SECRET` и не добавляйте `.env` в Git. Для создания
+repository webhook нужны права администратора соответствующего репозитория.
+
+1. Откройте на GitHub content-репозиторий, указанный в `WEBHOOK_REPOSITORY`.
+2. Перейдите в **Settings → Webhooks** и нажмите **Add webhook**. Если вкладка
+   Settings скрыта, откройте выпадающее меню репозитория и выберите её там.
+3. В **Payload URL** укажите `https://DOMAIN/hooks/content`, заменив `DOMAIN`
+   значением `SITE_DOMAIN`. Завершающий слеш не нужен.
+4. В **Content type** выберите `application/json`.
+5. В **Secret** вставьте точное значение `WEBHOOK_SECRET` из `.env`.
+6. Оставьте проверку TLS-сертификата включённой (**Enable SSL verification**).
+7. В **Which events would you like to trigger this webhook?** выберите
+   **Just the push event**.
+8. Оставьте флажок **Active** включённым и нажмите **Add webhook**.
+
+Сразу после создания GitHub отправит событие `ping`. Откройте созданный webhook
+и раздел **Recent deliveries**: успешный `ping` должен получить HTTP `200` и
+ответ `pong`. Затем сделайте commit и push в ветку `CONTENT_BRANCH`. Доставка
+события `push` должна получить HTTP `202`; publisher примет событие в очередь и
+атомарно опубликует новый релиз.
+
+Проверить публикацию на сервере можно по логам:
+
+```sh
+docker compose --project-directory . --env-file .env \
+  logs --since=15m publisher
+```
+
+Успешная обработка заканчивается сообщением `сайт опубликован` или `контент уже
+опубликован`. Основные ответы endpoint:
+
+- `200` — событие `ping` принято;
+- `202` — событие принято; push в другую ветку также получает `202`, но не
+  запускает публикацию;
+- `401` — не совпадает `WEBHOOK_SECRET`;
+- `403` — payload пришёл не от репозитория из `WEBHOOK_REPOSITORY`;
+- `405` — endpoint открыли методом, отличным от `POST`; например, напрямую в
+  браузере.
+
+GitHub не повторяет неудачные доставки автоматически. После устранения причины
+откройте неудачную запись в **Recent deliveries** и нажмите **Redeliver**.
+Независимо от webhook publisher проверяет content-репозиторий через интервал
+`POLL_INTERVAL`, поэтому пропущенный push будет опубликован позже. Актуальные
+названия полей и порядок действий также описаны в
+[официальной инструкции GitHub](https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks).
 
 ## Управление
 

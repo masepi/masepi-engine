@@ -243,7 +243,21 @@ func (p *publisher) webhook(response http.ResponseWriter, request *http.Request)
 		http.Error(response, "invalid payload", http.StatusBadRequest)
 		return
 	}
-	if !validWebhookSignature(body, request.Header.Get("X-Hub-Signature-256"), p.options.WebhookSecret) {
+	signatureHeader := request.Header.Get("X-Hub-Signature-256")
+	if !validWebhookSignature(body, signatureHeader, p.options.WebhookSecret) {
+		bodyHash := sha256.Sum256(body)
+		log.Printf(
+			"webhook отклонён: неверная подпись delivery=%q event=%q bytes=%d body_sha256=%x received=%q expected=%q content_type=%q content_encoding=%q user_agent=%q",
+			logHeader(request.Header.Get("X-GitHub-Delivery")),
+			logHeader(request.Header.Get("X-GitHub-Event")),
+			len(body),
+			bodyHash,
+			logHeader(signatureHeader),
+			webhookSignature(body, p.options.WebhookSecret),
+			logHeader(request.Header.Get("Content-Type")),
+			logHeader(request.Header.Get("Content-Encoding")),
+			logHeader(request.UserAgent()),
+		)
 		http.Error(response, "invalid signature", http.StatusUnauthorized)
 		return
 	}
@@ -309,6 +323,20 @@ func validWebhookSignature(payload []byte, header, secret string) bool {
 	_, _ = mac.Write(payload)
 	expected := mac.Sum(nil)
 	return len(provided) == len(expected) && subtle.ConstantTimeCompare(provided, expected) == 1
+}
+
+func webhookSignature(payload []byte, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(payload)
+	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+func logHeader(value string) string {
+	const limit = 160
+	if len(value) <= limit {
+		return value
+	}
+	return value[:limit] + "..."
 }
 
 func acquirePublishLock(name string) (*os.File, error) {

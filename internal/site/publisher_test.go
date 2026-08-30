@@ -1,9 +1,6 @@
 package site
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -24,7 +21,7 @@ func TestWebhookValidationAndDeduplication(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/hooks/content", strings.NewReader(string(payload)))
 	request.Header.Set("X-GitHub-Event", "push")
 	request.Header.Set("X-GitHub-Delivery", "delivery-1")
-	request.Header.Set("X-Hub-Signature-256", signature(payload, "secret"))
+	request.Header.Set("X-Hub-Signature-256", webhookSignature(payload, "secret"))
 	response := httptest.NewRecorder()
 	p.webhook(response, request)
 	if response.Code != http.StatusAccepted || len(p.trigger) != 1 {
@@ -34,7 +31,7 @@ func TestWebhookValidationAndDeduplication(t *testing.T) {
 	request = httptest.NewRequest(http.MethodPost, "/hooks/content", strings.NewReader(string(payload)))
 	request.Header.Set("X-GitHub-Event", "push")
 	request.Header.Set("X-GitHub-Delivery", "delivery-1")
-	request.Header.Set("X-Hub-Signature-256", signature(payload, "secret"))
+	request.Header.Set("X-Hub-Signature-256", webhookSignature(payload, "secret"))
 	response = httptest.NewRecorder()
 	p.webhook(response, request)
 	if response.Code != http.StatusAccepted || len(p.trigger) != 1 {
@@ -51,6 +48,13 @@ func TestWebhookValidationAndDeduplication(t *testing.T) {
 	}
 }
 
+func TestWebhookSignatureMatchesGitHubVector(t *testing.T) {
+	const want = "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
+	if got := webhookSignature([]byte("Hello, World!"), "It's a Secret to Everybody"); got != want {
+		t.Fatalf("webhook signature = %q, want %q", got, want)
+	}
+}
+
 func TestPublisherRejectsHTTPSRepository(t *testing.T) {
 	_, err := newPublisher(PublisherOptions{
 		ContentRepo: "https://github.com/owner/content.git", ContentBranch: "master",
@@ -60,10 +64,4 @@ func TestPublisherRejectsHTTPSRepository(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "SSH URL") {
 		t.Fatalf("expected SSH URL error, got %v", err)
 	}
-}
-
-func signature(payload []byte, secret string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write(payload)
-	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
