@@ -95,6 +95,8 @@
   --muted: #777;
   --code-background: #ffffea;
   --code-text: #202020;
+  --font-size-base: 16px;
+  --font-size-heading: 32px;
 }
 
 :root[data-theme="dark"] {
@@ -123,7 +125,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-size: 20px;
+  font-size: var(--font-size-base);
   line-height: 1.6;
 }
 
@@ -149,7 +151,7 @@ body {
 .sidebar a {
   display: block;
   padding: .4rem 1rem;
-  font-size: 40px;
+  font-size: var(--font-size-heading);
   line-height: 1.25;
   text-decoration: none;
 }
@@ -195,14 +197,14 @@ main {
 .article-header h1,
 .not-found h1 {
   margin: -.15rem 0 2rem;
-  font-size: 40px;
+  font-size: var(--font-size-heading);
   font-weight: 600;
   line-height: 1.3;
 }
 
 .article-list li + li { margin-top: .5rem; }
 
-.article-list { font-size: 20px; }
+.article-list { font-size: var(--font-size-base); }
 
 .article-list a {
   text-underline-offset: .15em;
@@ -225,7 +227,7 @@ main {
 .article-header time { color: var(--text); font-size: 83%; }
 
 .prose {
-  font-size: 20px;
+  font-size: var(--font-size-base);
   line-height: 1.44;
 }
 .prose > * { margin-top: 0; margin-bottom: 1.35em; }
@@ -236,9 +238,9 @@ main {
   margin-bottom: .6em;
   line-height: 1.3;
 }
-.prose h2 { font-size: 40px; }
+.prose h2 { font-size: var(--font-size-heading); }
 .prose h3,
-.prose h4 { font-size: 40px; }
+.prose h4 { font-size: var(--font-size-heading); }
 .prose a { text-underline-offset: .15em; }
 .prose img { display: block; max-width: 100%; max-height: 48rem; margin: 2rem 0; }
 .prose figure {
