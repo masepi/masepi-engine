@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -19,6 +18,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type PublisherOptions struct {
@@ -48,6 +49,12 @@ func RunPublisher(ctx context.Context, options PublisherOptions) error {
 	if err != nil {
 		return err
 	}
+	log.Printf(
+		"webhook настроен: repository=%q branch=%q %s",
+		p.options.ExpectedRepo,
+		p.options.ContentBranch,
+		webhookSecretSummary(p.options.WebhookSecret),
+	)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", p.health)
 	mux.HandleFunc("/hooks/content", p.webhook)
@@ -244,23 +251,41 @@ func (p *publisher) webhook(response http.ResponseWriter, request *http.Request)
 		return
 	}
 	signatureHeader := request.Header.Get("X-Hub-Signature-256")
-	if !validWebhookSignature(body, signatureHeader, p.options.WebhookSecret) {
+	signatureCheck := checkWebhookSignature(body, signatureHeader, p.options.WebhookSecret)
+	if !signatureCheck.Valid {
 		bodyHash := sha256.Sum256(body)
 		log.Printf(
-			"webhook отклонён: неверная подпись delivery=%q event=%q bytes=%d body_sha256=%x received=%q expected=%q content_type=%q content_encoding=%q user_agent=%q",
+			"webhook отклонён: неверная подпись reason=%q delivery=%q event=%q bytes=%d body_sha256=%x received=%q received_chars=%d received_bytes=%d signature_headers=%d expected=%q %s content_length=%d transfer_encoding=%q content_type=%q content_encoding=%q host=%q proto=%q user_agent=%q",
+			signatureCheck.Reason,
 			logHeader(request.Header.Get("X-GitHub-Delivery")),
 			logHeader(request.Header.Get("X-GitHub-Event")),
 			len(body),
 			bodyHash,
 			logHeader(signatureHeader),
-			webhookSignature(body, p.options.WebhookSecret),
+			len(signatureHeader),
+			signatureCheck.ReceivedBytes,
+			len(request.Header.Values("X-Hub-Signature-256")),
+			signatureCheck.Expected,
+			webhookSecretSummary(p.options.WebhookSecret),
+			request.ContentLength,
+			request.TransferEncoding,
 			logHeader(request.Header.Get("Content-Type")),
 			logHeader(request.Header.Get("Content-Encoding")),
+			logHeader(request.Host),
+			logHeader(request.Proto),
 			logHeader(request.UserAgent()),
 		)
 		http.Error(response, "invalid signature", http.StatusUnauthorized)
 		return
 	}
+	bodyHash := sha256.Sum256(body)
+	log.Printf(
+		"webhook подпись подтверждена: delivery=%q event=%q bytes=%d body_sha256=%x",
+		logHeader(request.Header.Get("X-GitHub-Delivery")),
+		logHeader(request.Header.Get("X-GitHub-Event")),
+		len(body),
+		bodyHash,
+	)
 	event := request.Header.Get("X-GitHub-Event")
 	if event == "ping" {
 		response.WriteHeader(http.StatusOK)
@@ -311,24 +336,67 @@ func (p *publisher) seenDelivery(delivery string) bool {
 	return false
 }
 
-func validWebhookSignature(payload []byte, header, secret string) bool {
-	if !strings.HasPrefix(header, "sha256=") {
-		return false
-	}
-	provided, err := hex.DecodeString(strings.TrimPrefix(header, "sha256="))
-	if err != nil {
-		return false
-	}
+type webhookSignatureCheck struct {
+	Valid         bool
+	Reason        string
+	Expected      string
+	ReceivedBytes int
+}
+
+func checkWebhookSignature(payload []byte, header, secret string) webhookSignatureCheck {
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write(payload)
 	expected := mac.Sum(nil)
-	return len(provided) == len(expected) && subtle.ConstantTimeCompare(provided, expected) == 1
+	result := webhookSignatureCheck{
+		Reason:        "signature_missing",
+		Expected:      "sha256=" + hex.EncodeToString(expected),
+		ReceivedBytes: -1,
+	}
+	if header == "" {
+		return result
+	}
+	if !strings.HasPrefix(header, "sha256=") {
+		result.Reason = "signature_scheme_not_sha256"
+		return result
+	}
+	encoded := strings.TrimPrefix(header, "sha256=")
+	if len(encoded) != sha256.Size*2 {
+		result.Reason = "signature_hex_length_not_64"
+		return result
+	}
+	provided, err := hex.DecodeString(encoded)
+	if err != nil {
+		result.Reason = "signature_hex_invalid"
+		return result
+	}
+	result.ReceivedBytes = len(provided)
+	if !hmac.Equal(provided, expected) {
+		result.Reason = "signature_mismatch"
+		return result
+	}
+	result.Valid = true
+	result.Reason = "ok"
+	return result
 }
 
 func webhookSignature(payload []byte, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write(payload)
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+func webhookSecretSummary(secret string) string {
+	fingerprint := sha256.Sum256([]byte(secret))
+	return fmt.Sprintf(
+		"secret_bytes=%d secret_runes=%d secret_sha256=%x secret_trimmed_bytes=%d secret_boundary_whitespace=%t secret_control_chars=%t secret_utf8_valid=%t",
+		len(secret),
+		utf8.RuneCountInString(secret),
+		fingerprint,
+		len(strings.TrimSpace(secret)),
+		strings.TrimSpace(secret) != secret,
+		strings.IndexFunc(secret, unicode.IsControl) >= 0,
+		utf8.ValidString(secret),
+	)
 }
 
 func logHeader(value string) string {

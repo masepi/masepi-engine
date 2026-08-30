@@ -90,6 +90,35 @@ docker compose --project-directory . --env-file .env \
   logs --since=15m publisher
 ```
 
+При старте publisher пишет длину загруженного секрета, его SHA-256-отпечаток и
+признаки скрытых пробелов или управляющих символов, но не сам секрет. При `401`
+лог также содержит точную причину разбора подписи, полученную и ожидаемую
+подписи, SHA-256 принятого тела, его длину и параметры HTTP-запроса. После
+изменения `.env` контейнер нужно пересоздать, иначе в уже запущенном процессе
+останется прежнее окружение:
+
+```sh
+docker compose --project-directory . --env-file .env \
+  up -d --build --force-recreate publisher
+docker compose --project-directory . --env-file .env \
+  logs --since=5m publisher
+```
+
+Отпечаток значения из `.env` можно сверить со значением `secret_sha256` в
+стартовой строке (команда не печатает сам секрет):
+
+```sh
+set -a
+. ./.env
+set +a
+printf '%s' "$WEBHOOK_SECRET" | sha256sum
+```
+
+Для обычной подписи GitHub причина отказа должна быть `signature_mismatch`.
+Причины `signature_missing`, `signature_scheme_not_sha256`,
+`signature_hex_length_not_64` и `signature_hex_invalid` указывают на отсутствие
+или повреждение заголовка `X-Hub-Signature-256` до входа в publisher.
+
 Успешная обработка заканчивается сообщением `сайт опубликован` или `контент уже
 опубликован`. Основные ответы endpoint:
 
