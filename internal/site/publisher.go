@@ -92,6 +92,9 @@ func newPublisher(options PublisherOptions) (*publisher, error) {
 	if strings.TrimSpace(options.ContentRepo) == "" {
 		return nil, errors.New("content repository is required")
 	}
+	if !strings.HasPrefix(options.ContentRepo, "git@github.com:") || !strings.HasSuffix(options.ContentRepo, ".git") {
+		return nil, errors.New("content repository must use GitHub SSH URL")
+	}
 	if strings.TrimSpace(options.ExpectedRepo) == "" {
 		return nil, errors.New("expected GitHub repository is required")
 	}

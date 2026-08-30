@@ -12,7 +12,7 @@ import (
 
 func TestWebhookValidationAndDeduplication(t *testing.T) {
 	p, err := newPublisher(PublisherOptions{
-		ContentRepo: "https://github.com/owner/content.git", ContentBranch: "master",
+		ContentRepo: "git@github.com:owner/content.git", ContentBranch: "master",
 		ExpectedRepo: "owner/content", WebhookSecret: "secret", StateDir: t.TempDir(),
 		SiteTitle: "Test site", Language: "en",
 	})
@@ -48,6 +48,17 @@ func TestWebhookValidationAndDeduplication(t *testing.T) {
 	p.webhook(response, request)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("invalid signature status: %d", response.Code)
+	}
+}
+
+func TestPublisherRejectsHTTPSRepository(t *testing.T) {
+	_, err := newPublisher(PublisherOptions{
+		ContentRepo: "https://github.com/owner/content.git", ContentBranch: "master",
+		ExpectedRepo: "owner/content", WebhookSecret: "secret",
+		SiteTitle: "Test site", Language: "en",
+	})
+	if err == nil || !strings.Contains(err.Error(), "SSH URL") {
+		t.Fatalf("expected SSH URL error, got %v", err)
 	}
 }
 

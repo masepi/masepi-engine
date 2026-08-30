@@ -14,16 +14,37 @@ load_config() {
   # shellcheck disable=SC1090
   . "$ENV_FILE"
   set +a
+
+  resolve_ssh_dir
+}
+
+resolve_ssh_dir() {
+  ssh_home=${HOME:-}
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    command -v getent >/dev/null 2>&1 || die "не найден getent для определения домашнего каталога $SUDO_USER"
+    passwd_entry=$(getent passwd "$SUDO_USER") || die "не найден пользователь $SUDO_USER"
+    ssh_home=$(printf '%s\n' "$passwd_entry" | cut -d: -f6)
+  fi
+  [ -n "$ssh_home" ] || die "не удалось определить домашний каталог пользователя"
+  SSH_DIR="$ssh_home/.ssh"
+  export SSH_DIR
+}
+
+require_github_ssh_url() {
+  case "$1" in
+    git@github.com:*/*.git) ;;
+    *) die "$2 должен быть SSH URL вида git@github.com:owner/repository.git" ;;
+  esac
 }
 
 require_tools() {
   command -v git >/dev/null 2>&1 || die "не найден Git"
+  command -v ssh-keygen >/dev/null 2>&1 || die "не найден OpenSSH client"
   command -v docker >/dev/null 2>&1 || die "не найден Docker"
   docker compose version >/dev/null 2>&1 || die "не найден Docker Compose plugin"
 }
 
 require_config() {
-  : "${CONTENT_REPO:?CONTENT_REPO не задан в .env}"
   : "${CONTENT_BRANCH:?CONTENT_BRANCH не задан в .env}"
   : "${WEBHOOK_REPOSITORY:?WEBHOOK_REPOSITORY не задан в .env}"
   : "${SITE_DOMAIN:?SITE_DOMAIN не задан в .env}"
@@ -36,6 +57,10 @@ require_config() {
   : "${WEBHOOK_SECRET:?WEBHOOK_SECRET не задан в .env}"
   : "${POLL_INTERVAL:?POLL_INTERVAL не задан в .env}"
 
+  [ -d "$SSH_DIR" ] || die "не найден SSH-каталог $SSH_DIR"
+  [ -r "$SSH_DIR/known_hosts" ] || die "не найден читаемый $SSH_DIR/known_hosts"
+  ssh-keygen -F github.com -f "$SSH_DIR/known_hosts" >/dev/null ||
+    die "в $SSH_DIR/known_hosts нет host key github.com"
   case "$CONTENT_BRANCH" in -*) die "CONTENT_BRANCH не может начинаться с '-'" ;; esac
   case "$TLS_CERT_FILE" in /*|..|../*|*/../*) die "TLS_CERT_FILE должен быть путём внутри TLS_CERT_DIR" ;; esac
   case "$TLS_KEY_FILE" in /*|..|../*|*/../*) die "TLS_KEY_FILE должен быть путём внутри TLS_CERT_DIR" ;; esac
