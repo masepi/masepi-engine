@@ -18,6 +18,7 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     volumes:
       - ./var:/data
+      - ${HOME}/.ssh:/root/.ssh:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
       interval: 5s

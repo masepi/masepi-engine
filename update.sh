@@ -14,7 +14,8 @@ fi
 
 old_revision=$(git -C "$ROOT_DIR" rev-parse HEAD)
 upstream=$(git -C "$ROOT_DIR" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')
-git -C "$ROOT_DIR" fetch --prune origin
+GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -o BatchMode=yes' \
+  git -C "$ROOT_DIR" -c 'url.git@github.com:.insteadOf=https://github.com/' fetch --prune origin
 target_revision=$(git -C "$ROOT_DIR" rev-parse "$upstream")
 git -C "$ROOT_DIR" merge-base --is-ancestor "$old_revision" "$target_revision" || die "обновление движка не является fast-forward"
 

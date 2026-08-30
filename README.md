@@ -19,7 +19,7 @@
 Требуются Linux, Git, Docker Engine, Docker Compose plugin, доступ текущего пользователя к Docker и уже выпущенный TLS-сертификат.
 
 ```sh
-git clone https://github.com/masepi/masepi-engine.git
+git clone git@github.com:masepi/masepi-engine.git
 cd masepi-engine
 cp .env.example .env
 $EDITOR .env
@@ -27,6 +27,13 @@ $EDITOR .env
 ```
 
 Все переменные подробно описаны непосредственно в `.env.example`: назначение, допустимый формат и влияние каждой настройки. Движок не содержит fallback-значений для названия, языка, домена, репозитория или ветки конкретного сайта.
+
+И движок, и content-репозиторий клонируются по SSH. Publisher получает read-only
+доступ к `~/.ssh` пользователя, запускающего Docker Compose, поэтому используются
+уже настроенные на сервере ключи, `config` и `known_hosts`. Git работает без
+интерактивных запросов: при недоступном ключе установка завершается ошибкой, а не
+запрашивает логин или пароль GitHub. Старый HTTPS URL GitHub в `.env` или remote
+движка также автоматически направляется через SSH.
 
 Если `WEBHOOK_SECRET` пуст, установщик сгенерирует его, добавит в `.env`, выставит файлу права `0600` и напечатает параметры webhook. В GitHub нужно открыть `Settings → Webhooks → Add webhook` в content-репозитории и указать:
 
