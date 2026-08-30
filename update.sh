@@ -16,7 +16,8 @@ old_revision=$(git -C "$ROOT_DIR" rev-parse HEAD)
 upstream=$(git -C "$ROOT_DIR" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')
 engine_remote=$(git -C "$ROOT_DIR" remote get-url origin)
 require_github_ssh_url "$engine_remote" "origin движка"
-GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -o BatchMode=yes' \
+GIT_TERMINAL_PROMPT=0 \
+GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile='$ROOT_DIR/server/ssh/github_known_hosts'" \
   git -C "$ROOT_DIR" fetch --prune origin
 target_revision=$(git -C "$ROOT_DIR" rev-parse "$upstream")
 git -C "$ROOT_DIR" merge-base --is-ancestor "$old_revision" "$target_revision" || die "обновление движка не является fast-forward"

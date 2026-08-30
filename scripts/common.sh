@@ -39,7 +39,6 @@ require_github_ssh_url() {
 
 require_tools() {
   command -v git >/dev/null 2>&1 || die "не найден Git"
-  command -v ssh-keygen >/dev/null 2>&1 || die "не найден OpenSSH client"
   command -v docker >/dev/null 2>&1 || die "не найден Docker"
   docker compose version >/dev/null 2>&1 || die "не найден Docker Compose plugin"
 }
@@ -58,9 +57,6 @@ require_config() {
   : "${POLL_INTERVAL:?POLL_INTERVAL не задан в .env}"
 
   [ -d "$SSH_DIR" ] || die "не найден SSH-каталог $SSH_DIR"
-  [ -r "$SSH_DIR/known_hosts" ] || die "не найден читаемый $SSH_DIR/known_hosts"
-  ssh-keygen -F github.com -f "$SSH_DIR/known_hosts" >/dev/null ||
-    die "в $SSH_DIR/known_hosts нет host key github.com"
   case "$CONTENT_BRANCH" in -*) die "CONTENT_BRANCH не может начинаться с '-'" ;; esac
   case "$TLS_CERT_FILE" in /*|..|../*|*/../*) die "TLS_CERT_FILE должен быть путём внутри TLS_CERT_DIR" ;; esac
   case "$TLS_KEY_FILE" in /*|..|../*|*/../*) die "TLS_KEY_FILE должен быть путём внутри TLS_CERT_DIR" ;; esac
