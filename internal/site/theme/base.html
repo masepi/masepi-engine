@@ -15,11 +15,11 @@
   {{if .Description}}<meta property="og:description" content="{{.Description}}">{{end}}
   <meta property="og:site_name" content="{{.Site.Title}}">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="/assets/site.css">
-  <link rel="stylesheet" href="/assets/katex/katex.min.css">
-  <script src="/assets/katex/katex.min.js" defer></script>
-  <script src="/assets/katex/auto-render.min.js" defer></script>
-  <script src="/assets/site.js" defer></script>
+  <link rel="stylesheet" href="/assets/site.css?v={{.AssetVersion}}">
+  <link rel="stylesheet" href="/assets/katex/katex.min.css?v={{.AssetVersion}}">
+  <script src="/assets/katex/katex.min.js?v={{.AssetVersion}}" defer></script>
+  <script src="/assets/katex/auto-render.min.js?v={{.AssetVersion}}" defer></script>
+  <script src="/assets/site.js?v={{.AssetVersion}}" defer></script>
 </head>
 <body>
   <div class="layout">

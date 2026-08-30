@@ -45,14 +45,15 @@ type Section struct {
 }
 
 type pageData struct {
-	Site        Config
-	PageTitle   string
-	Description string
-	Canonical   string
-	Posts       []*Post
-	Post        *Post
-	Sections    []*Section
-	Section     *Section
+	Site         Config
+	AssetVersion string
+	PageTitle    string
+	Description  string
+	Canonical    string
+	Posts        []*Post
+	Post         *Post
+	Sections     []*Section
+	Section      *Section
 }
 
 type BuildResult struct {

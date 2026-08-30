@@ -108,6 +108,12 @@ date: 2024-01-01
 	assertContains(t, home, `Главная страница.`)
 
 	first := mustRead(t, filepath.Join(output, "blog", "first", "index.html"))
+	themeHash, err := embeddedThemeHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assetVersion := themeHash[:12]
+	assertContains(t, first, `<link rel="stylesheet" href="/assets/site.css?v=`+assetVersion+`">`)
 	assertContains(t, first, `<a href="/blog/second/">Вторая</a>`)
 	assertContains(t, first, `<img src="/blog/image.png" alt="Картинка">`)
 	assertContains(t, first, `<figure><img src="/blog/image.png" alt="Картинка"><figcaption>Картинка</figcaption></figure>`)
@@ -119,8 +125,8 @@ date: 2024-01-01
 	if strings.Contains(first, `<em>b</em>`) {
 		t.Fatal("Markdown emphasis was rendered inside a formula")
 	}
-	assertContains(t, first, `<link rel="stylesheet" href="/assets/katex/katex.min.css">`)
-	assertContains(t, first, `<script src="/assets/katex/katex.min.js" defer></script>`)
+	assertContains(t, first, `<link rel="stylesheet" href="/assets/katex/katex.min.css?v=`+assetVersion+`">`)
+	assertContains(t, first, `<script src="/assets/katex/katex.min.js?v=`+assetVersion+`" defer></script>`)
 	assertContains(t, first, `<time datetime="2025-01-03">3 January 2025</time>`)
 	assertContains(t, first, `<!-- raw HTML omitted -->`)
 	if strings.Count(first, "<h1>") != 1 {

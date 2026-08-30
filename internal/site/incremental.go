@@ -311,7 +311,7 @@ func (b *builder) snapshot(previous *buildManifest, options PublishOptions) (*bu
 }
 
 func (b *builder) applyIncremental(target string, previous *buildManifest, snapshot *buildSnapshot) (int, error) {
-	base := pageData{Site: b.config, Sections: snapshot.sections}
+	base := pageData{Site: b.config, AssetVersion: b.assetVersion, Sections: snapshot.sections}
 	newSections := sectionBySlug(snapshot.sections)
 	oldSections := manifestSectionBySlug(previous.Sections)
 	rebuildWholeSection := make(map[string]bool)

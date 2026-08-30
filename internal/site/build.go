@@ -22,10 +22,11 @@ import (
 var themeFS embed.FS
 
 type builder struct {
-	options  Options
-	config   Config
-	markdown *markdownRenderer
-	assets   int
+	options      Options
+	config       Config
+	assetVersion string
+	markdown     *markdownRenderer
+	assets       int
 }
 
 func Build(options Options) (BuildResult, error) {
@@ -82,7 +83,13 @@ func newBuilder(options Options) (*builder, error) {
 	if config.Title == "" || config.Language == "" {
 		return nil, errors.New("site title and language must not be empty")
 	}
-	return &builder{options: options, config: config, markdown: newMarkdownRenderer()}, nil
+	themeHash, err := embeddedThemeHash()
+	if err != nil {
+		return nil, fmt.Errorf("hash embedded theme: %w", err)
+	}
+	return &builder{
+		options: options, config: config, assetVersion: themeHash[:12], markdown: newMarkdownRenderer(),
+	}, nil
 }
 
 func (b *builder) build() (BuildResult, error) {
@@ -356,7 +363,7 @@ func (b *builder) writeTheme(staging string) error {
 }
 
 func (b *builder) writePages(staging string, sections []*Section, posts []*Post) error {
-	base := pageData{Site: b.config, Sections: sections}
+	base := pageData{Site: b.config, AssetVersion: b.assetVersion, Sections: sections}
 	for _, section := range sections {
 		if len(section.Posts) == 1 {
 			if err := b.writePostPage(staging, base, section, section.Posts[0]); err != nil {
