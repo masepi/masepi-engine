@@ -70,6 +70,13 @@ date: 2024-01-01
 	if result.Posts != 4 || result.Assets != 1 {
 		t.Fatalf("unexpected result: %+v", result)
 	}
+	outputInfo, err := os.Stat(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outputInfo.Mode().Perm() != 0o755 {
+		t.Fatalf("output permissions = %04o, want 0755", outputInfo.Mode().Perm())
+	}
 	for _, font := range []string{
 		"pt-serif-regular-latin.woff2",
 		"pt-serif-regular-cyrillic.woff2",

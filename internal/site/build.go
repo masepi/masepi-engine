@@ -116,6 +116,9 @@ func (b *builder) build() (BuildResult, error) {
 		return BuildResult{}, err
 	}
 	defer os.RemoveAll(staging)
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return BuildResult{}, fmt.Errorf("make build output readable: %w", err)
+	}
 
 	if err := b.copyAssets(staging); err != nil {
 		return BuildResult{}, err
